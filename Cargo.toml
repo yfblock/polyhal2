@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["polyhal2", "polyhal2-base", "polyhal2-boot", "polyhal2-pagetable"]
+
+[workspace.dependencies]
+polyhal2-base = { path = "polyhal2-base" }
+polyhal2-boot = { path = "polyhal2-boot" }
+polyhal2-pagetable = { path = "polyhal2-pagetable" }
+bitflags = "2.0.2"
+aarch64-cpu = "9.3"

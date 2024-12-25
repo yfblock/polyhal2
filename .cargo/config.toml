@@ -1,0 +1,7 @@
+[build]
+
+# Please set the mock environment here.
+# For developing.
+[env]
+KERNEL_OFFSET = "0"
+PAGE_SIZE = "4096"

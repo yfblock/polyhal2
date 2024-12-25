@@ -1,0 +1,14 @@
+[package]
+name = "polyhal2"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+boot = ["dep:polyhal2-boot"]
+pagetable = ["dep:polyhal2-pagetable"]
+default = []
+
+[dependencies]
+polyhal2-base = { workspace = true }
+polyhal2-pagetable = { workspace = true, optional = true }
+polyhal2-boot = { workspace = true, optional = true }
