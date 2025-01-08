@@ -1,16 +1,15 @@
 [package]
-name = "polyhal2-boot"
+name = "polyhal2-debug"
 version = "0.1.0"
 edition = "2024"
 
 [features]
-mmu = []
+log = []
 
 [dependencies]
 polyhal2-base = { workspace = true }
-polyhal2-pagetable = { workspace = true }
-polyhal2-device = { workspace = true }
+polyhal2-boot = { workspace = true }
+spin = { workspace = true }
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
 arm_pl011 = { workspace = true }
-aarch64-cpu = { workspace = true }

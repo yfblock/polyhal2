@@ -6,6 +6,7 @@ edition = "2024"
 [features]
 boot = ["dep:polyhal2-boot"]
 pagetable = ["dep:polyhal2-pagetable"]
+mmu = ["polyhal2-boot/mmu"]
 default = []
 
 [dependencies]

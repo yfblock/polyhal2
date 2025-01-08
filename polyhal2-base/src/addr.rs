@@ -33,13 +33,13 @@ pub struct VirtAddr(pub(crate) usize);
 impl VirtAddr {
     /// Get the ptr for the given `VirtAddr`
     #[inline]
-    pub fn get_ptr<T>(&self) -> *const T {
+    pub const fn get_ptr<T>(&self) -> *const T {
         self.0 as *const T
     }
 
     /// Get the mut ptr for the given `VirtAddr`
     #[inline]
-    pub fn get_mut_ptr<T>(&self) -> *mut T {
+    pub const fn get_mut_ptr<T>(&self) -> *mut T {
         self.0 as *mut T
     }
 
@@ -55,13 +55,13 @@ impl VirtAddr {
 
     /// Get a slice for the given `VirtAddr`.
     #[inline]
-    pub fn slice_with_len<T>(&self, len: usize) -> &'static [T] {
+    pub const fn slice_with_len<T>(&self, len: usize) -> &'static [T] {
         unsafe { core::slice::from_raw_parts(self.get_ptr(), len) }
     }
 
     /// Get the mut slice for the given `VirtAddr`
     #[inline]
-    pub fn slice_mut_with_len<T>(&self, len: usize) -> &'static mut [T] {
+    pub const fn slice_mut_with_len<T>(&self, len: usize) -> &'static mut [T] {
         unsafe { core::slice::from_raw_parts_mut(self.get_mut_ptr(), len) }
     }
 

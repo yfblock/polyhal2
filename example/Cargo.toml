@@ -1,0 +1,21 @@
+[package]
+name = "test-boot"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name="test_page_boot"
+path = "src/bin/test_page_boot.rs"
+required-features = ["pagetable"]
+
+[[bin]]
+name="test_no_page_boot"
+path = "src/bin/test_no_page_boot.rs"
+
+[features]
+pagetable = ["polyhal2/pagetable"]
+
+[dependencies]
+polyhal2 = { path = "../polyhal2", features = ["boot"]}
+polyhal2-debug = { path = "../polyhal2-debug" }
+log = "0.4"

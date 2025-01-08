@@ -1,20 +1,22 @@
+use core::marker::PhantomData;
+
 use aarch64_cpu::registers::{TTBR0_EL1, Writeable};
 use polyhal2_base::{
     addr::{PhysAddr, PhysPage, VirtAddr, VirtPage},
     bit,
 };
 
-use crate::{MappingFlags, PTE, PageTable, TLB};
+use crate::{MappingFlags, VSpace, VSpaceAO, PTE, TLB};
 
 impl PTE {
     #[inline]
-    pub const fn address(&self) -> PhysAddr {
+    pub const fn paddr(&self) -> PhysAddr {
         PhysAddr::new(self.0 & 0xFFFF_FFFF_F000)
     }
 
     #[inline]
     #[allow(dead_code)]
-    pub fn set(&mut self, ppn: usize, flags: PTEFlags) {
+    pub const fn set(&mut self, ppn: usize, flags: PTEFlags) {
         self.0 = (ppn << 10) | flags.bits() as usize;
     }
 
@@ -38,8 +40,8 @@ impl PTE {
         Self(ppn.to_addr() | 0b11)
     }
 
-    #[inline]
-    pub(crate) fn new_page(ppn: PhysPage, flags: PTEFlags) -> Self {
+    /// Create a new PageTableEntry from ppn and flags
+    pub const fn new_page(ppn: PhysPage, flags: PTEFlags) -> Self {
         Self(ppn.to_addr() | flags.bits() as usize)
     }
 }
@@ -102,6 +104,7 @@ bitflags::bitflags! {
         const NON_BLOCK =   bit!(1);
         /// Memory attributes index field.
         const ATTR_INDX =   0b111 << 2;
+        /// 
         const NORMAL_NONCACHE = 0b010 << 2;
         /// Non-secure bit. For memory accesses from Secure state, specifies whether the output
         /// address is in Secure or Non-secure memory.
@@ -141,7 +144,7 @@ bitflags::bitflags! {
     }
 }
 
-impl PageTable {
+impl<T: VSpaceAO> VSpace<T> {
     /// The size of the page for this platform.
     pub(crate) const PAGE_SIZE: usize = 0x1000;
     pub(crate) const PAGE_LEVEL: usize = 3;
@@ -149,17 +152,21 @@ impl PageTable {
     pub(crate) const GLOBAL_ROOT_PTE_RANGE: usize = 0x200;
     pub(crate) const VADDR_BITS: usize = 39;
     pub(crate) const USER_VADDR_END: usize = (1 << Self::VADDR_BITS) - 1;
-    pub(crate) const KERNEL_VADDR_START: usize = !Self::USER_VADDR_END;
+
+    /// Get the vspace object from the paddr.
+    pub unsafe fn from_paddr(paddr: PhysAddr) -> Self {
+        Self(paddr, PhantomData::default())
+    }
 
     /// Get the using PageTable currently.
     #[inline]
     pub fn current() -> Self {
-        Self(PhysAddr::new(TTBR0_EL1.get_baddr() as _))
+        Self(PhysAddr::new(TTBR0_EL1.get_baddr() as _), PhantomData::default())
     }
 
     /// Change the pagetable to Virtual space.
     #[inline]
-    pub fn change(&self) {
+    pub fn switch(&self) {
         TTBR0_EL1.set(self.0.floor(Self::PAGE_SIZE).raw() as _);
         TLB::flush_all();
     }
@@ -187,8 +194,6 @@ impl TLB {
 
     /// flush all tlb entry
     ///
-    /// how to use ?
-    /// just
     /// TLB::flush_all();
     #[inline]
     pub fn flush_all() {

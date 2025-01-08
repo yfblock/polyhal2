@@ -4,8 +4,7 @@
 #[macro_export]
 macro_rules! declare_env_var {
     ($name:literal, $t:ident) => {{
-        let v = option_env!($name).expect(concat!("Not found environment variable ", $name));
-        match $t::from_str_radix(v, 16) {
+        match $t::from_str_radix(env!($name), 16) {
             Ok(d) => d,
             _ => 0,
         }

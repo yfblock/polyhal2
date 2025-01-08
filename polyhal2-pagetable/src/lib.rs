@@ -4,16 +4,17 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 
-use aarch64::{pn_index, pn_offest};
+use core::marker::PhantomData;
+
+use arch::{pn_index, pn_offest};
 use polyhal2_base::{
     addr::{PhysAddr, PhysPage, VirtAddr, VirtPage},
     bit,
-    lazy_init::LazyInit,
 };
 
 /// PageTable for aarch64
 #[cfg_attr(target_arch = "aarch64", path = "aarch64.rs")]
-mod aarch64;
+mod arch;
 
 /// Page table entry structure
 ///
@@ -57,23 +58,39 @@ bitflags::bitflags! {
     }
 }
 
-/// Page Table
+/// Virtual Space Abstract Operation.
+pub trait VSpaceAO {
+    /// Allocate a physical page 
+    fn alloc_page() -> PhysPage;
+    /// Free a physical page
+    fn free_page(page: PhysPage);
+}
+
+/// A Dummy Implementation for VSpaceAO
+pub struct VSpaceAODummy;
+
+impl VSpaceAO for VSpaceAODummy {
+    fn alloc_page() -> PhysPage {
+        unreachable!("Dummy Alloc Page")
+    }
+
+    fn free_page(_page: PhysPage) {
+        unreachable!("Dummy Free Page")
+    }
+}
+
+/// Virtual Address Space
 ///
 /// This is just the page table defination.
 /// The implementation of the page table in the specific architecture mod.
-/// Such as:
-/// x86_64/page_table.rs
-/// riscv64/page_table/sv39.rs
-/// aarch64/page_table.rs
-/// loongarch64/page_table.rs
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct PageTable(pub(crate) PhysAddr);
+pub struct VSpace<T: VSpaceAO>(pub(crate) PhysAddr, PhantomData<T>);
 
-impl PageTable {
+impl<T: VSpaceAO> VSpace<T> {
     /// Get the page table list through the physical address
     #[inline]
-    pub(crate) fn get_pte_list(paddr: PhysAddr) -> &'static mut [PTE] {
+    pub(crate) const fn get_pte_list(paddr: PhysAddr) -> &'static mut [PTE] {
         paddr.mapped_vaddr().slice_mut_with_len::<PTE>(Self::PTE_NUM_IN_PAGE)
     }
 
@@ -83,89 +100,35 @@ impl PageTable {
     /// vpn: Virtual page will be mapped.
     /// ppn: Physical page.
     /// flags: Mapping flags, include Read, Write, Execute and so on.
-    /// size: MappingSize. Just support 4KB page currently.
-    pub fn map_page(&self, vpn: VirtPage, ppn: PhysPage, flags: MappingFlags, _size: MappingSize) {
+    pub fn map_page(&self, vpn: VirtPage, ppn: PhysPage, flags: MappingFlags) {
         assert!(
             vpn.to_addr() <= Self::USER_VADDR_END,
-            "You only should use the address limited by user"
+            "This is not a valid address"
         );
         assert!(Self::PAGE_LEVEL >= 3, "Just level >= 3 supported currently");
         let mut pte_list = Self::get_pte_list(self.0);
         if Self::PAGE_LEVEL == 4 {
             let pte = &mut pte_list[pn_index(vpn, 3)];
             if !pte.is_valid() {
-                *pte = PTE::new_table(frame_alloc());
+                *pte = PTE::new_table(T::alloc_page());
             }
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 3
         {
             let pte = &mut pte_list[pn_index(vpn, 2)];
             if !pte.is_valid() {
-                *pte = PTE::new_table(frame_alloc());
+                *pte = PTE::new_table(T::alloc_page());
             }
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 2
         {
             let pte = &mut pte_list[pn_index(vpn, 1)];
             if !pte.is_valid() {
-                *pte = PTE::new_table(frame_alloc());
+                *pte = PTE::new_table(T::alloc_page());
             }
-            pte_list = Self::get_pte_list(pte.address());
-        }
-        // level 1, map page
-        pte_list[pn_index(vpn, 0)] = PTE::new_page(ppn, flags.into());
-        TLB::flush_vaddr(vpn.into());
-    }
-
-    /// Mapping a page to specific address(kernel space address).
-    ///
-    /// TODO: This method is not implemented.
-    /// TIPS: If we mapped to kernel, the page will be shared between different pagetable.
-    ///
-    /// Ensure that PageTable is which you want to map.
-    /// `vpn` Virtual page will be mapped.
-    /// `ppn` Physical page.
-    /// `flags` Mapping flags, include Read, Write, Execute and so on.
-    /// `size` MappingSize. Just support 4KB page currently.    
-    ///
-    /// How to implement shared.
-    pub fn map_kernel(
-        &self,
-        vpn: VirtPage,
-        ppn: PhysPage,
-        flags: MappingFlags,
-        _size: MappingSize,
-    ) {
-        assert!(
-            vpn.to_addr() >= Self::KERNEL_VADDR_START,
-            "Virt page should greater than Self::KERNEL_VADDR_START"
-        );
-        assert!(Self::PAGE_LEVEL >= 3, "Just level >= 3 supported currently");
-        let mut pte_list = Self::get_pte_list(self.0);
-        if Self::PAGE_LEVEL == 4 {
-            let pte = &mut pte_list[pn_index(vpn, 3)];
-            if !pte.is_valid() {
-                *pte = PTE::new_table(frame_alloc());
-            }
-            pte_list = Self::get_pte_list(pte.address());
-        }
-        // level 3
-        {
-            let pte = &mut pte_list[pn_index(vpn, 2)];
-            if !pte.is_valid() {
-                *pte = PTE::new_table(frame_alloc());
-            }
-            pte_list = Self::get_pte_list(pte.address());
-        }
-        // level 2
-        {
-            let pte = &mut pte_list[pn_index(vpn, 1)];
-            if !pte.is_valid() {
-                *pte = PTE::new_table(frame_alloc());
-            }
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 1, map page
         pte_list[pn_index(vpn, 0)] = PTE::new_page(ppn, flags.into());
@@ -183,7 +146,7 @@ impl PageTable {
             if !pte.is_table() {
                 return;
             };
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 3
         {
@@ -191,7 +154,7 @@ impl PageTable {
             if !pte.is_table() {
                 return;
             };
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 2
         {
@@ -199,7 +162,7 @@ impl PageTable {
             if !pte.is_table() {
                 return;
             };
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 1, map page
         pte_list[pn_index(vpn, 0)] = PTE(0);
@@ -218,7 +181,7 @@ impl PageTable {
             if !pte.is_table() {
                 return None;
             }
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 3
         {
@@ -226,7 +189,7 @@ impl PageTable {
             if !pte.is_table() {
                 return None;
             }
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 2
         {
@@ -234,14 +197,30 @@ impl PageTable {
             if !pte.is_table() {
                 return None;
             }
-            pte_list = Self::get_pte_list(pte.address());
+            pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 1, map page
         let pte = pte_list[pn_index(vpn, 0)];
         Some((
-            PhysAddr::new(pte.address().raw() + pn_offest(vaddr, 0)),
+            PhysAddr::new(pte.paddr().raw() + pn_offest(vaddr, 0)),
             pte.flags().into(),
         ))
+    }
+
+    /// Map the huge page page, vaddr -> vaddr
+    /// 
+    /// Support 1GB, 2MB
+    pub unsafe fn map_huge(&self, vaddr: VirtAddr, paddr: PhysAddr, flags: MappingFlags) {
+        let vpn: VirtPage = vaddr.into();
+        let mut pte_list = Self::get_pte_list(self.0);
+        if Self::PAGE_LEVEL == 4 {
+            let pte = &mut pte_list[pn_index(vpn, 3)];
+            if !pte.is_table() {
+                return;
+            }
+            pte_list = Self::get_pte_list(pte.paddr());
+        }
+        pte_list[pn_index(vpn, 2)] = PTE::new_page(paddr.into(), flags.into());
     }
 
     /// Release the page table entry.
@@ -253,23 +232,23 @@ impl PageTable {
         let drop_l2 = |pte_list: &[PTE]| {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
-                    frame_dealloc(x.address().into());
+                    T::free_page(x.paddr().into());
                 }
             });
         };
         let drop_l3 = |pte_list: &[PTE]| {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
-                    drop_l2(Self::get_pte_list(x.address()));
-                    frame_dealloc(x.address().into());
+                    drop_l2(Self::get_pte_list(x.paddr()));
+                    T::free_page(x.paddr().into());
                 }
             });
         };
         let drop_l4 = |pte_list: &[PTE]| {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
-                    drop_l3(Self::get_pte_list(x.address()));
-                    frame_dealloc(x.address().into());
+                    drop_l3(Self::get_pte_list(x.paddr()));
+                    T::free_page(x.paddr().into());
                 }
             });
         };
@@ -300,28 +279,6 @@ impl PageTable {
 /// TLB::flush_all();
 /// ```
 pub struct TLB;
-
-/// Page Allocation trait for privoids that page allocation
-pub trait PageAlloc: Sync {
-    /// Allocate a physical page
-    fn alloc(&self) -> PhysPage;
-    /// Release a physical page
-    fn dealloc(&self, ppn: PhysPage);
-}
-
-static PAGE_ALLOC: LazyInit<&dyn PageAlloc> = LazyInit::new();
-
-/// alloc a persistent memory page
-#[inline]
-pub(crate) fn frame_alloc() -> PhysPage {
-    PAGE_ALLOC.alloc()
-}
-
-/// release a frame
-#[inline]
-pub(crate) fn frame_dealloc(ppn: PhysPage) {
-    PAGE_ALLOC.dealloc(ppn)
-}
 
 /// This structure indicates size of the page that will be mapped.
 ///

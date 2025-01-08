@@ -1,0 +1,9 @@
+[package]
+name = "polyhal2-device"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+polyhal2-base = { workspace = true }
+fdt = "0.1.5"
+log = { workspace = true }
