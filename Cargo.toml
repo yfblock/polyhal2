@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "polyhal2",
-    "polyhal2-base",
+    "polyhal2-core",
     "polyhal2-boot",
     "polyhal2-debug",
     "polyhal2-device",
@@ -17,7 +17,7 @@ license = "MIT"
 
 
 [workspace.dependencies]
-polyhal2-base = { path = "polyhal2-base" }
+polyhal2-core = { path = "polyhal2-core" }
 polyhal2-boot = { path = "polyhal2-boot" }
 polyhal2-debug = { path = "polyhal2-debug" }
 polyhal2-device = { path = "polyhal2-device" }

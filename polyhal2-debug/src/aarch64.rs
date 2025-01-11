@@ -1,5 +1,5 @@
 use arm_pl011::Pl011Uart;
-use polyhal2_base::addr::PhysAddr;
+use polyhal2_core::addr::PhysAddr;
 use spin::Mutex;
 
 use crate::DebugConsole;

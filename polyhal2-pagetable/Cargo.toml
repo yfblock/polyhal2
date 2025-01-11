@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-polyhal2-base = { workspace = true }
+polyhal2-core = { workspace = true }
 bitflags = { workspace = true }
 aarch64-cpu = { workspace = true }

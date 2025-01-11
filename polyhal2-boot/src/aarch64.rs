@@ -4,7 +4,7 @@ use aarch64_cpu::asm::{self, barrier};
 use aarch64_cpu::registers::{
     CurrentEL, ReadWriteable, Readable, SPSel, Writeable, CNTHCTL_EL2, CNTVOFF_EL2, ELR_EL2, ELR_EL3, HCR_EL2, LR, MAIR_EL1, SCR_EL3, SCTLR_EL1, SPSR_EL2, SPSR_EL3, SP_EL0, SP_EL1, TCR_EL1, TTBR0_EL1, TTBR1_EL1
 };
-use polyhal2_base::consts::KERNEL_OFFSET;
+use polyhal2_core::consts::KERNEL_OFFSET;
 use polyhal2_pagetable::TLB;
 
 use crate::console::{display_basic, display_end};
@@ -44,7 +44,7 @@ unsafe extern "C" fn _start() -> ! {
             b      .",
             switch_to_el1 = sym switch_to_el1,
             init_mmu = sym init_mmu,
-            KERNEL_OFFSET = const polyhal2_base::consts::KERNEL_OFFSET,
+            KERNEL_OFFSET = const polyhal2_core::consts::KERNEL_OFFSET,
             entry = sym rust_tmp_main,
         )
     }
@@ -149,8 +149,6 @@ unsafe fn rust_tmp_main(hart_id: usize, dtb: *const u8, boot_stack: usize) {
     display_info!("Platform CurrentEL", "{}", CurrentEL.read(CurrentEL::EL));
     display_info!("Platfoem Device Tree", "{:#p}", dtb);
     display_info!();
-    display_info!("LR value", "{:#x}", LR.get());
-    display_info!("PAN Reg", "{:#x}", SCTLR_EL1.get());
     display_info!("Boot Stack Pointer", "{:#p}", boot_stack as *const u8);
     display_end();
     unsafe {

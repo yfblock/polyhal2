@@ -7,7 +7,7 @@ edition = "2024"
 log = []
 
 [dependencies]
-polyhal2-base = { workspace = true }
+polyhal2-core = { workspace = true }
 polyhal2-boot = { workspace = true }
 spin = { workspace = true }
 

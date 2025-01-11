@@ -8,7 +8,7 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 
-use polyhal2_base::consts::KERNEL_OFFSET;
+use polyhal2_core::consts::KERNEL_OFFSET;
 
 /// Initialize with specific device tree binary
 pub fn init_dtb(dtb_ptr: *const u8) -> Option<()> {

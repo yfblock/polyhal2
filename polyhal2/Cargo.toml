@@ -10,6 +10,6 @@ mmu = ["polyhal2-boot/mmu"]
 default = []
 
 [dependencies]
-polyhal2-base = { workspace = true }
+polyhal2-core = { workspace = true }
 polyhal2-pagetable = { workspace = true, optional = true }
 polyhal2-boot = { workspace = true, optional = true }

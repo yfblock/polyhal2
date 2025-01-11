@@ -1,8 +1,8 @@
 use core::marker::PhantomData;
 
 use aarch64_cpu::registers::{TTBR0_EL1, Writeable};
-use polyhal2_base::{
-    addr::{PhysAddr, PhysPage, VirtAddr, VirtPage},
+use polyhal2_core::{
+    addr::{PhysAddr, VirtAddr},
     bit,
 };
 
@@ -36,13 +36,13 @@ impl PTE {
     }
 
     #[inline]
-    pub(crate) fn new_table(ppn: PhysPage) -> Self {
-        Self(ppn.to_addr() | 0b11)
+    pub(crate) fn new_table(paddr: PhysAddr) -> Self {
+        Self(paddr.raw() | 0b11)
     }
 
     /// Create a new PageTableEntry from ppn and flags
-    pub const fn new_page(ppn: PhysPage, flags: PTEFlags) -> Self {
-        Self(ppn.to_addr() | flags.bits() as usize)
+    pub const fn new_page(paddr: PhysAddr, flags: PTEFlags) -> Self {
+        Self(paddr.raw() | flags.bits() as usize)
     }
 }
 
@@ -203,12 +203,12 @@ impl TLB {
 
 /// Get n level page table index of the given virtual address
 #[inline]
-pub fn pn_index(vpn: VirtPage, n: usize) -> usize {
-    (vpn.raw() >> 9 * n) & 0x1ff
+pub const fn pg_index(vaddr: VirtAddr, n: usize) -> usize {
+    (vaddr.raw() >> (12 + 9 * n)) & 0x1ff
 }
 
 /// Get n level page table offset of the given virtual address
 #[inline]
-pub fn pn_offest(vaddr: VirtAddr, n: usize) -> usize {
+pub const fn pg_offest(vaddr: VirtAddr, n: usize) -> usize {
     vaddr.raw() % (1 << (12 + 9 * n))
 }

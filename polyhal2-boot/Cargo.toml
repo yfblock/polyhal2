@@ -7,7 +7,8 @@ edition = "2024"
 mmu = []
 
 [dependencies]
-polyhal2-base = { workspace = true }
+log = { workspace = true }
+polyhal2-core = { workspace = true }
 polyhal2-pagetable = { workspace = true }
 polyhal2-device = { workspace = true }
 

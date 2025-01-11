@@ -12,4 +12,6 @@ build:
 qemu: build
 #	$(QEMU_EXEC) -kernel target/$(TARGET)/$(MODE)/test_no_page_boot
 	$(QEMU_EXEC) -kernel target/$(TARGET)/$(MODE)/test_no_page_boot.bin
-.PHONY:
+clean:
+	rm -rf target/
+.PHONY: all build qemu

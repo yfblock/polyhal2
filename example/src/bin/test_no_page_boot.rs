@@ -5,7 +5,7 @@
 use core::panic::PanicInfo;
 
 use log::LevelFilter;
-use polyhal2_debug::{println, DebugConsole};
+use polyhal2_debug::println;
 use test_boot::log_impl::LogImpl;
 extern crate polyhal2_debug;
 extern crate test_boot;
@@ -25,6 +25,7 @@ polyhal2::boot::ph_ctor!(INIT_LOG, || {
 fn main(_hart_id: usize) {
     println!("Entering kernel ...");
     println!("Hello World!");
+    log::debug!("Test kernel Logging");
     loop{}
 }
 

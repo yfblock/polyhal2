@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-polyhal2-base = { workspace = true }
+polyhal2-core = { workspace = true }
 fdt = "0.1.5"
 log = { workspace = true }

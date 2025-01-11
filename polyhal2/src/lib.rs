@@ -3,7 +3,7 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 
-pub use polyhal2_base as base;
+pub use polyhal2_core as core;
 #[cfg(feature = "boot")]
 pub use polyhal2_boot as boot;
 #[cfg(feature = "pagetable")]

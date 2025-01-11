@@ -1,4 +1,4 @@
-use polyhal2_base::consts::KERNEL_OFFSET;
+use polyhal2_core::consts::KERNEL_OFFSET;
 
 use crate::display_info;
 use core::fmt::{Arguments, Write};

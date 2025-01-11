@@ -1,20 +1,14 @@
 use core::{
     // ffi::CStr,
     fmt::{Debug, Display},
-    ops::Add,
 };
 
-use crate::consts::{KERNEL_OFFSET, PAGE_SIZE};
+use crate::consts::KERNEL_OFFSET;
 
 /// Physical Address Struct
 #[repr(C)]
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct PhysAddr(pub(crate) usize);
-impl From<PhysPage> for PhysAddr {
-    fn from(value: PhysPage) -> Self {
-        Self(value.0 << 12)
-    }
-}
 
 impl PhysAddr {
     /// Get the mapped virtual address
@@ -88,65 +82,6 @@ impl VirtAddr {
     // }
 }
 
-/// Physical Page Struct
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct PhysPage(pub(crate) usize);
-
-impl From<PhysAddr> for PhysPage {
-    fn from(value: PhysAddr) -> Self {
-        Self(value.0 >> 12)
-    }
-}
-
-impl Add<PhysPage> for PhysPage {
-    type Output = PhysPage;
-
-    fn add(self, rhs: PhysPage) -> Self::Output {
-        PhysPage(self.0 + rhs.0)
-    }
-}
-
-impl Add<usize> for PhysPage {
-    type Output = PhysPage;
-
-    fn add(self, rhs: usize) -> Self::Output {
-        PhysPage(self.0 + rhs)
-    }
-}
-
-/// Virtual Page
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct VirtPage(pub(crate) usize);
-impl From<VirtAddr> for VirtPage {
-    fn from(value: VirtAddr) -> Self {
-        Self(value.0 >> 12)
-    }
-}
-
-impl PhysPage {
-    /// FIXME: Get the buffer for the page.
-    #[inline]
-    pub const fn get_buffer(&self) -> &'static mut [u8] {
-        unsafe {
-            core::slice::from_raw_parts_mut((self.0 << 12 | KERNEL_OFFSET) as *mut u8, PAGE_SIZE)
-        }
-    }
-}
-
-impl Add<usize> for VirtPage {
-    type Output = VirtPage;
-
-    fn add(self, rhs: usize) -> Self::Output {
-        VirtPage(self.0 + rhs)
-    }
-}
-
-impl From<VirtPage> for VirtAddr {
-    fn from(value: VirtPage) -> Self {
-        Self(value.to_addr())
-    }
-}
-
 macro_rules! impl_multi {
     ($($t:ident),* {$($block:item)*}) => {
         macro_rules! methods {
@@ -169,19 +104,19 @@ macro_rules! impl_multi {
     };
 }
 
-impl_multi!(Debug => (VirtAddr, VirtPage, PhysAddr, PhysPage) {
+impl_multi!(Debug => (VirtAddr, PhysAddr) {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("{:#x}", self.0))
     }
 });
 
-impl_multi!(Display => (VirtAddr, VirtPage, PhysAddr, PhysPage) {
+impl_multi!(Display => (VirtAddr, PhysAddr) {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("{:#x}", self.0))
     }
 });
 
-impl_multi!(VirtAddr, VirtPage, PhysAddr, PhysPage {
+impl_multi!(VirtAddr, PhysAddr {
     /// Create a new object from the specific value
     pub const fn new(value: usize) -> Self {
         Self(value)
@@ -191,9 +126,7 @@ impl_multi!(VirtAddr, VirtPage, PhysAddr, PhysPage {
     pub const fn raw(&self) -> usize {
         self.0
     }
-});
 
-impl_multi!(VirtAddr, PhysAddr {
     /// align down the address with `align`
     pub const fn floor(&self, align: usize) -> Self {
         Self(self.0 / align * align)
@@ -202,17 +135,5 @@ impl_multi!(VirtAddr, PhysAddr {
     /// align up the address with `align`
     pub const fn ceil(&self, align: usize) -> Self {
         Self((self.0 + align - 1) / align * align)
-    }
-});
-
-impl_multi!(VirtPage, PhysPage {
-    /// Get raw address from the page.
-    pub const fn to_addr(&self) -> usize {
-        self.0 << 12
-    }
-
-    /// Get the page from the address.
-    pub const fn from_addr(addr: usize) -> Self {
-        Self(addr >> 12)
     }
 });
