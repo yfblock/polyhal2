@@ -5,7 +5,8 @@
 #![deny(missing_docs)]
 
 /// PageTable for aarch64
-#[cfg_attr(target_arch = "aarch64", path = "aarch64.rs")]
+#[cfg_attr(target_arch = "aarch64", path = "imp/aarch64.rs")]
+#[cfg_attr(target_arch = "loongarch64", path = "imp/loongarch64.rs")]
 mod imp;
 
 use core::marker::PhantomData;
@@ -19,6 +20,7 @@ use polyhal2_core::{
 /// Page table entry structure
 ///
 /// Just define here. Should implement functions in specific architectures.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct PTE(pub usize);
 
@@ -88,6 +90,8 @@ impl VSpaceAO for VSpaceAODummy {
 pub struct VSpace<T: VSpaceAO>(pub(crate) PhysAddr, PhantomData<T>);
 
 impl<T: VSpaceAO> VSpace<T> {
+    const _CHECK: () = assert!(Self::PAGE_LEVEL >= 3, "Just level >= 3 supported currently");
+
     /// Get the page table list through the physical address
     #[inline]
     pub(crate) const fn get_pte_list(paddr: PhysAddr) -> &'static mut [PTE] {
@@ -107,7 +111,6 @@ impl<T: VSpaceAO> VSpace<T> {
             vaddr.raw() <= Self::USER_VADDR_END,
             "This is not a valid address"
         );
-        assert!(Self::PAGE_LEVEL >= 3, "Just level >= 3 supported currently");
         let mut pte_list = Self::get_pte_list(self.0);
         if Self::PAGE_LEVEL == 4 {
             let pte = &mut pte_list[pg_index(vaddr, 3)];
@@ -168,7 +171,7 @@ impl<T: VSpaceAO> VSpace<T> {
         }
         // level 1, map page
         pte_list[pg_index(vaddr, 0)] = PTE(0);
-        TLB::flush_vaddr(vaddr.into());
+        TLB::flush_vaddr(vaddr);
     }
 
     /// Translate a virtual adress to a physical address and mapping flags.
@@ -208,21 +211,6 @@ impl<T: VSpaceAO> VSpace<T> {
         ))
     }
 
-    /// Map the huge page page, vaddr -> vaddr
-    ///
-    /// Support 1GB, 2MB
-    pub unsafe fn map_huge(&self, vaddr: VirtAddr, paddr: PhysAddr, flags: MappingFlags) {
-        let mut pte_list = Self::get_pte_list(self.0);
-        if Self::PAGE_LEVEL == 4 {
-            let pte = &mut pte_list[pg_index(vaddr, 3)];
-            if !pte.is_table() {
-                return;
-            }
-            pte_list = Self::get_pte_list(pte.paddr());
-        }
-        pte_list[pg_index(vaddr, 2)] = PTE::new_page(paddr.into(), flags.into());
-    }
-
     /// Release the page table entry.
     ///
     /// The page table entry in the user space address will be released.
@@ -232,7 +220,7 @@ impl<T: VSpaceAO> VSpace<T> {
         let drop_l2 = |pte_list: &[PTE]| {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
-                    T::free_page(x.paddr().into());
+                    T::free_page(x.paddr());
                 }
             });
         };
@@ -240,7 +228,7 @@ impl<T: VSpaceAO> VSpace<T> {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
                     drop_l2(Self::get_pte_list(x.paddr()));
-                    T::free_page(x.paddr().into());
+                    T::free_page(x.paddr());
                 }
             });
         };
@@ -248,7 +236,7 @@ impl<T: VSpaceAO> VSpace<T> {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
                     drop_l3(Self::get_pte_list(x.paddr()));
-                    T::free_page(x.paddr().into());
+                    T::free_page(x.paddr());
                 }
             });
         };
@@ -256,8 +244,8 @@ impl<T: VSpaceAO> VSpace<T> {
         // Drop all sub page table entry and clear root page.
         let pte_list = &mut Self::get_pte_list(self.0)[..Self::GLOBAL_ROOT_PTE_RANGE];
         match Self::PAGE_LEVEL {
-            4 => drop_l4(&pte_list),
-            _ => drop_l3(&pte_list),
+            4 => drop_l4(pte_list),
+            _ => drop_l3(pte_list),
         }
         pte_list.fill(PTE(0));
     }

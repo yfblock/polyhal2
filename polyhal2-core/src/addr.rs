@@ -134,6 +134,6 @@ impl_multi!(VirtAddr, PhysAddr {
 
     /// align up the address with `align`
     pub const fn ceil(&self, align: usize) -> Self {
-        Self((self.0 + align - 1) / align * align)
+        Self(self.0.div_ceil(align) * align)
     }
 });

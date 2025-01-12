@@ -2,8 +2,6 @@
 #![no_main]
 #![feature(used_with_arg)]
 
-use core::panic::PanicInfo;
-
 use log::LevelFilter;
 use polyhal2_debug::println;
 use test_boot::log_impl::LogImpl;
@@ -26,12 +24,6 @@ fn main(_hart_id: usize) {
     println!("Entering kernel ...");
     println!("Hello World!");
     log::debug!("Test kernel Logging");
-    loop{}
-}
-
-#[panic_handler]
-fn panic_handler(message: &PanicInfo) -> ! {
-    loop{}
 }
 
 // Specific a boot function and the size of the boot_stack

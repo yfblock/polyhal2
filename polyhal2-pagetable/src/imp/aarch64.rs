@@ -4,20 +4,21 @@ use aarch64_cpu::registers::{TTBR0_EL1, Writeable};
 use polyhal2_core::{
     addr::{PhysAddr, VirtAddr},
     bit,
+    consts::PAGE_SIZE,
 };
 
-use crate::{MappingFlags, VSpace, VSpaceAO, PTE, TLB};
+use crate::{MappingFlags, PTE, TLB, VSpace, VSpaceAO};
 
 impl PTE {
     #[inline]
     pub const fn paddr(&self) -> PhysAddr {
-        PhysAddr::new(self.0 & 0xFFFF_FFFF_F000)
+        PhysAddr::new(self.0).floor(PAGE_SIZE)
     }
 
     #[inline]
     #[allow(dead_code)]
     pub const fn set(&mut self, ppn: usize, flags: PTEFlags) {
-        self.0 = (ppn << 10) | flags.bits() as usize;
+        self.0 = (ppn << 10) | flags.bits();
     }
 
     #[inline]
@@ -42,7 +43,7 @@ impl PTE {
 
     /// Create a new PageTableEntry from ppn and flags
     pub const fn new_page(paddr: PhysAddr, flags: PTEFlags) -> Self {
-        Self(paddr.raw() | flags.bits() as usize)
+        Self(paddr.raw() | flags.bits())
     }
 }
 
@@ -67,26 +68,26 @@ impl From<MappingFlags> for PTEFlags {
     }
 }
 
-impl Into<MappingFlags> for PTEFlags {
-    fn into(self) -> MappingFlags {
-        if self.is_empty() {
+impl From<PTEFlags> for MappingFlags {
+    fn from(value: PTEFlags) -> Self {
+        if value.is_empty() {
             return MappingFlags::empty();
         };
         let mut flags = MappingFlags::R;
 
-        if !self.contains(PTEFlags::AP_RO) {
+        if !value.contains(PTEFlags::AP_RO) {
             flags |= MappingFlags::W;
         }
-        if !self.contains(PTEFlags::UXN) || !self.contains(PTEFlags::PXN) {
+        if !value.contains(PTEFlags::UXN) || !value.contains(PTEFlags::PXN) {
             flags |= MappingFlags::X;
         }
-        if self.contains(PTEFlags::AP_EL0) {
+        if value.contains(PTEFlags::AP_EL0) {
             flags |= MappingFlags::U;
         }
-        if self.contains(PTEFlags::AF) {
+        if value.contains(PTEFlags::AF) {
             flags |= MappingFlags::A;
         }
-        if !self.contains(PTEFlags::NG) {
+        if !value.contains(PTEFlags::NG) {
             flags |= MappingFlags::G;
         }
         flags
@@ -104,7 +105,7 @@ bitflags::bitflags! {
         const NON_BLOCK =   bit!(1);
         /// Memory attributes index field.
         const ATTR_INDX =   0b111 << 2;
-        /// 
+        ///
         const NORMAL_NONCACHE = 0b010 << 2;
         /// Non-secure bit. For memory accesses from Secure state, specifies whether the output
         /// address is in Secure or Non-secure memory.
@@ -153,15 +154,10 @@ impl<T: VSpaceAO> VSpace<T> {
     pub(crate) const VADDR_BITS: usize = 39;
     pub(crate) const USER_VADDR_END: usize = (1 << Self::VADDR_BITS) - 1;
 
-    /// Get the vspace object from the paddr.
-    pub unsafe fn from_paddr(paddr: PhysAddr) -> Self {
-        Self(paddr, PhantomData::default())
-    }
-
     /// Get the using PageTable currently.
     #[inline]
     pub fn current() -> Self {
-        Self(PhysAddr::new(TTBR0_EL1.get_baddr() as _), PhantomData::default())
+        Self(PhysAddr::new(TTBR0_EL1.get_baddr() as _), PhantomData)
     }
 
     /// Change the pagetable to Virtual space.

@@ -6,7 +6,8 @@ use core::fmt::{Arguments, Write};
 
 use polyhal2_boot::uart_interface;
 
-#[cfg_attr(target_arch = "aarch64", path = "aarch64.rs")]
+#[cfg_attr(target_arch = "aarch64", path = "arch/aarch64.rs")]
+#[cfg_attr(target_arch = "loongarch64", path = "arch/loongarch64.rs")]
 pub mod arch;
 
 pub struct DebugConsole;
@@ -15,9 +16,7 @@ uart_interface!(DebugConsole::putchar, DebugConsole::getchar);
 
 impl Write for DebugConsole {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        s.as_bytes()
-            .into_iter()
-            .for_each(|c| DebugConsole::putchar(*c));
+        s.as_bytes().iter().for_each(|c| DebugConsole::putchar(*c));
         Ok(())
     }
 }

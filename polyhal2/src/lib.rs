@@ -3,8 +3,8 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 
-pub use polyhal2_core as core;
 #[cfg(feature = "boot")]
 pub use polyhal2_boot as boot;
+pub use polyhal2_core as core;
 #[cfg(feature = "pagetable")]
 pub use polyhal2_pagetable as pagetable;

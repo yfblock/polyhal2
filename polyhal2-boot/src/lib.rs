@@ -12,13 +12,14 @@
 use core::slice::Iter;
 
 /// EntryPoint per architecture
-#[cfg_attr(target_arch = "aarch64", path = "aarch64.rs")]
 mod entry;
 
 /// Input and output function
 pub mod console;
 /// The helpful macros.
 pub mod macros;
+
+mod panic;
 
 unsafe extern "Rust" {
     /// The real entry of the program

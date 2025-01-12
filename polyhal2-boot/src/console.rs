@@ -1,4 +1,5 @@
 use polyhal2_core::consts::KERNEL_OFFSET;
+use polyhal2_device::get_dtb_ptr;
 
 use crate::display_info;
 use core::fmt::{Arguments, Write};
@@ -9,7 +10,7 @@ pub struct WriterImpl;
 impl Write for WriterImpl {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         s.as_bytes()
-            .into_iter()
+            .iter()
             .for_each(|c| unsafe { super::__polyhal_putchar(*c) });
         Ok(())
     }
@@ -37,16 +38,24 @@ pub(crate) fn display_basic() {
     );
     display_info!("Platform ABI", "{}", env!("BUILD_ABI"));
     display_info!("Platform Architecture", "{}", env!("BUILD_TARGET"));
+    display_info!("Platform DTB Pointer", "{:#018x}", get_dtb_ptr().raw());
 }
 
 /// Display the information before entering kernel
 pub(crate) fn display_end() {
+    unsafe extern "C" {
+        fn bstack_top();
+    }
+    display_info!("Boot Stack Top", "{:#p}", bstack_top as *const u8);
     display_info!();
     display_info!("Kernel Offset", "{:#p}", KERNEL_OFFSET as *const u8);
-    display_info!("Kernel EntryPoint", "{:#p}", super::__polyhal_real_entry as *const u8);
+    display_info!(
+        "Kernel EntryPoint",
+        "{:#p}",
+        super::__polyhal_real_entry as *const u8
+    );
     display_info!();
 }
-
 
 /// Display Platform Information with specified format
 /// display_info!("item name", "{}", "format");

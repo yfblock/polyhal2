@@ -13,5 +13,7 @@ polyhal2-pagetable = { workspace = true }
 polyhal2-device = { workspace = true }
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
-arm_pl011 = { workspace = true }
 aarch64-cpu = { workspace = true }
+
+[target.'cfg(target_arch = "loongarch64")'.dependencies]
+loongArch64 = { workspace = true }

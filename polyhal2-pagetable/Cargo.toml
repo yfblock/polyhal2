@@ -6,4 +6,9 @@ edition = "2024"
 [dependencies]
 polyhal2-core = { workspace = true }
 bitflags = { workspace = true }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
 aarch64-cpu = { workspace = true }
+
+[target.'cfg(target_arch = "loongarch64")'.dependencies]
+loongArch64 = { workspace = true }

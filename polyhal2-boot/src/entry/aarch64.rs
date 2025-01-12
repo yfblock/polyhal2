@@ -1,10 +1,11 @@
 use core::arch::global_asm;
 
-use aarch64_cpu::asm::{self, barrier};
+use aarch64_cpu::asm::barrier;
 use aarch64_cpu::registers::{
-    CurrentEL, ReadWriteable, Readable, SPSel, Writeable, CNTHCTL_EL2, CNTVOFF_EL2, ELR_EL2, ELR_EL3, HCR_EL2, LR, MAIR_EL1, SCR_EL3, SCTLR_EL1, SPSR_EL2, SPSR_EL3, SP_EL0, SP_EL1, TCR_EL1, TTBR0_EL1, TTBR1_EL1
+    CurrentEL, MAIR_EL1, ReadWriteable, Readable, SCTLR_EL1, TCR_EL1, TTBR0_EL1, TTBR1_EL1,
+    Writeable,
 };
-use polyhal2_core::consts::KERNEL_OFFSET;
+use polyhal2_core::{addr::PhysAddr, consts::KERNEL_OFFSET};
 use polyhal2_pagetable::TLB;
 
 use crate::console::{display_basic, display_end};
@@ -27,22 +28,23 @@ unsafe extern "C" fn _start() -> ! {
             adrp    x8, bstack_top
             add     x8, x8, :lo12:bstack_top
             mov     sp, x8
-
-            // mov     x0, sp
-            // bl      {switch_to_el1}         // switch to EL1
-            // adrp    x0, boot_page
-            // bl      {init_mmu}              // setup MMU
-
+        ",
+        // Enable Paging Mode
+        // TODO: Enable if need to enable paging mode
+        "
+            b       2f
+            adrp    x0, boot_page
+            bl      {init_mmu}              // setup MMU
             mov     x8, {KERNEL_OFFSET}     // set SP to the high address
             add     sp, sp, x8
-
+        ",
+        // Init boot Stack and call main function
+        "2:
             mov     x0, x19                 // call rust_entry(cpu_id, dtb)
             mov     x1, x20
-            mov     x2, sp
             ldr     x8, ={entry}
             blr     x8
-            b      .",
-            switch_to_el1 = sym switch_to_el1,
+        ",
             init_mmu = sym init_mmu,
             KERNEL_OFFSET = const polyhal2_core::consts::KERNEL_OFFSET,
             entry = sym rust_tmp_main,
@@ -50,46 +52,11 @@ unsafe extern "C" fn _start() -> ! {
     }
 }
 
-/// Drop currentEL to el1
-///
-unsafe fn switch_to_el1(sp: u64) {
-    SPSel.write(SPSel::SP::ELx);
-    SP_EL0.set(0);
-    let current_el = CurrentEL.read(CurrentEL::EL);
-    if current_el < 2 {
-        return;
+/// enter low cost area, loop until shutdown.
+pub fn hlt_forever() -> ! {
+    loop {
+        aarch64_cpu::asm::wfi();
     }
-    if current_el == 3 {
-        // Set EL2 to 64bit and enable the HVC instruction.
-        SCR_EL3.write(
-            SCR_EL3::NS::NonSecure + SCR_EL3::HCE::HvcEnabled + SCR_EL3::RW::NextELIsAarch64,
-        );
-        // Set the return address and exception level.
-        SPSR_EL3.write(
-            SPSR_EL3::M::EL1h
-                + SPSR_EL3::D::Masked
-                + SPSR_EL3::A::Masked
-                + SPSR_EL3::I::Masked
-                + SPSR_EL3::F::Masked,
-        );
-        ELR_EL3.set(LR.get());
-    }
-    // Disable EL1 timer traps and the timer offset.
-    CNTHCTL_EL2.modify(CNTHCTL_EL2::EL1PCEN::SET + CNTHCTL_EL2::EL1PCTEN::SET);
-    CNTVOFF_EL2.set(0);
-    // Set EL1 to 64bit.
-    HCR_EL2.write(HCR_EL2::RW::EL1IsAarch64);
-    // Set the return address and exception level.
-    SPSR_EL2.write(
-        SPSR_EL2::M::EL1h
-            + SPSR_EL2::D::Masked
-            + SPSR_EL2::A::Masked
-            + SPSR_EL2::I::Masked
-            + SPSR_EL2::F::Masked,
-    );
-    SP_EL1.set(sp);
-    ELR_EL2.set(LR.get());
-    asm::eret();
 }
 
 // Map all memory to the page using 1GB Huge Page.
@@ -128,7 +95,7 @@ unsafe fn init_mmu(mut root_paddr: u64) {
 
     // Set both TTBR0 and TTBR1
     if root_paddr > KERNEL_OFFSET as _ {
-        root_paddr = root_paddr - KERNEL_OFFSET as u64;
+        root_paddr -= KERNEL_OFFSET as u64;
     }
     TTBR0_EL1.set(root_paddr);
     TTBR1_EL1.set(root_paddr);
@@ -141,17 +108,16 @@ unsafe fn init_mmu(mut root_paddr: u64) {
 }
 
 /// Rust Temporary Entry
-unsafe fn rust_tmp_main(hart_id: usize, dtb: *const u8, boot_stack: usize) {
+unsafe fn rust_tmp_main(hart_id: usize, dtb: usize) {
     // Initialize all constructor functions.
-    super::ph_init_iter().for_each(|phw| (phw.func)());
-    polyhal2_device::init_dtb(dtb);
+    crate::ph_init_iter().for_each(|phw| (phw.func)());
+    polyhal2_device::init_dtb(PhysAddr::new(dtb));
     display_basic();
     display_info!("Platform CurrentEL", "{}", CurrentEL.read(CurrentEL::EL));
-    display_info!("Platfoem Device Tree", "{:#p}", dtb);
     display_info!();
-    display_info!("Boot Stack Pointer", "{:#p}", boot_stack as *const u8);
+    display_info!("Boot HART ID", "{}", hart_id);
     display_end();
-    unsafe {
-        super::__polyhal_real_entry(hart_id);
-    }
+
+    // Call rust main function.
+    super::call_rust_main(hart_id);
 }

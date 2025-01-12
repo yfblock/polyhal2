@@ -1,4 +1,3 @@
-
 /// Declare consts using env.
 /// Passing environment variable when compiling.
 #[macro_export]

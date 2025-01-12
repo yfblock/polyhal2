@@ -14,15 +14,16 @@ pub struct LazyInit<T> {
 unsafe impl<T: Send + Sync> Sync for LazyInit<T> {}
 unsafe impl<T: Send> Send for LazyInit<T> {}
 
-impl<T> LazyInit<T> {
-    /// Create a new LazyInit object.
-    pub const fn new() -> Self {
+impl<T> Default for LazyInit<T> {
+    fn default() -> Self {
         Self {
             inited: AtomicBool::new(false),
             data: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
+}
 
+impl<T> LazyInit<T> {
     /// Initialize the object by `data`.
     pub fn init_by(&self, data: T) {
         assert!(!self.is_init());
