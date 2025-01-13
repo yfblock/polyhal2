@@ -9,13 +9,14 @@
 #[cfg_attr(target_arch = "loongarch64", path = "imp/loongarch64.rs")]
 mod imp;
 
-use core::marker::PhantomData;
-
 use imp::{pg_index, pg_offest};
 use polyhal2_core::{
     addr::{PhysAddr, VirtAddr},
     bit,
 };
+
+// static mut PAGE_ALLOC: &dyn VSpaceAO = &VSpaceAODummy;
+static mut PAGE_ALLOC: &dyn VSpaceAO = &VSpaceAODummy;
 
 /// Page table entry structure
 ///
@@ -61,24 +62,36 @@ bitflags::bitflags! {
 }
 
 /// Virtual Space Abstract Operation.
-pub trait VSpaceAO {
+pub trait VSpaceAO: Sync {
     /// Allocate a physical page
-    fn alloc_page() -> PhysAddr;
+    fn alloc_page(&self) -> PhysAddr;
     /// Free a physical page
-    fn free_page(paddr: PhysAddr);
+    fn free_page(&self, paddr: PhysAddr);
 }
 
 /// A Dummy Implementation for VSpaceAO
 pub struct VSpaceAODummy;
 
 impl VSpaceAO for VSpaceAODummy {
-    fn alloc_page() -> PhysAddr {
+    fn alloc_page(&self) -> PhysAddr {
         unreachable!("Dummy Alloc Page")
     }
 
-    fn free_page(_paddr: PhysAddr) {
+    fn free_page(&self, _paddr: PhysAddr) {
         unreachable!("Dummy Free Page")
     }
+}
+
+#[inline]
+#[allow(static_mut_refs)]
+fn alloc_page() -> PhysAddr {
+    unsafe { PAGE_ALLOC.alloc_page() }
+}
+
+#[inline]
+#[allow(static_mut_refs)]
+fn free_page(paddr: PhysAddr) {
+    unsafe { PAGE_ALLOC.free_page(paddr) }
 }
 
 /// Virtual Address Space
@@ -87,9 +100,9 @@ impl VSpaceAO for VSpaceAODummy {
 /// The implementation of the page table in the specific architecture mod.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct VSpace<T: VSpaceAO>(pub(crate) PhysAddr, PhantomData<T>);
+pub struct VSpace(pub(crate) PhysAddr);
 
-impl<T: VSpaceAO> VSpace<T> {
+impl VSpace {
     const _CHECK: () = assert!(Self::PAGE_LEVEL >= 3, "Just level >= 3 supported currently");
 
     /// Get the page table list through the physical address
@@ -106,37 +119,49 @@ impl<T: VSpaceAO> VSpace<T> {
     /// vpn: Virtual page will be mapped.
     /// ppn: Physical page.
     /// flags: Mapping flags, include Read, Write, Execute and so on.
-    pub fn map_page(&self, vaddr: VirtAddr, paddr: PhysAddr, flags: MappingFlags) {
-        assert!(
-            vaddr.raw() <= Self::USER_VADDR_END,
-            "This is not a valid address"
-        );
+    pub fn map_page(
+        &self,
+        vaddr: VirtAddr,
+        paddr: PhysAddr,
+        flags: MappingFlags,
+        size: MappingSize,
+    ) {
+        let pte_value = PTE::new_page(paddr, flags.into(), size);
+
         let mut pte_list = Self::get_pte_list(self.0);
         if Self::PAGE_LEVEL == 4 {
             let pte = &mut pte_list[pg_index(vaddr, 3)];
             if !pte.is_valid() {
-                *pte = PTE::new_table(T::alloc_page());
+                *pte = PTE::new_table(alloc_page());
             }
             pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 3
         {
             let pte = &mut pte_list[pg_index(vaddr, 2)];
-            if !pte.is_valid() {
-                *pte = PTE::new_table(T::alloc_page());
+            if !pte.is_valid() && size != MappingSize::Page1GB {
+                *pte = PTE::new_table(alloc_page());
+            } else if size == MappingSize::Page1GB {
+                // TODO: Mapping huge page 1GB
+                *pte = pte_value;
+                return;
             }
             pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 2
         {
             let pte = &mut pte_list[pg_index(vaddr, 1)];
-            if !pte.is_valid() {
-                *pte = PTE::new_table(T::alloc_page());
+            if !pte.is_valid() && size != MappingSize::Page2MB {
+                *pte = PTE::new_table(alloc_page());
+            } else if size == MappingSize::Page2MB {
+                // TODO: Mapping huge page 2MB
+                *pte = pte_value;
+                return;
             }
             pte_list = Self::get_pte_list(pte.paddr());
         }
         // level 1, map page
-        pte_list[pg_index(vaddr, 0)] = PTE::new_page(paddr, flags.into());
+        pte_list[pg_index(vaddr, 0)] = pte_value;
         TLB::flush_vaddr(vaddr);
     }
 
@@ -144,7 +169,9 @@ impl<T: VSpaceAO> VSpace<T> {
     ///
     /// Ensure the virtual page is exists.
     /// vpn: Virtual address.
-    pub fn unmap_page(&self, vaddr: VirtAddr) {
+    ///
+    /// TODO: Unmap huge page
+    pub fn unmap_page(&self, vaddr: VirtAddr, _size: MappingSize) {
         let mut pte_list = Self::get_pte_list(self.0);
         if Self::PAGE_LEVEL == 4 {
             let pte = &mut pte_list[pg_index(vaddr, 3)];
@@ -220,7 +247,7 @@ impl<T: VSpaceAO> VSpace<T> {
         let drop_l2 = |pte_list: &[PTE]| {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
-                    T::free_page(x.paddr());
+                    free_page(x.paddr());
                 }
             });
         };
@@ -228,7 +255,7 @@ impl<T: VSpaceAO> VSpace<T> {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
                     drop_l2(Self::get_pte_list(x.paddr()));
-                    T::free_page(x.paddr());
+                    free_page(x.paddr());
                 }
             });
         };
@@ -236,7 +263,7 @@ impl<T: VSpaceAO> VSpace<T> {
             pte_list.iter().for_each(|x| {
                 if x.is_table() {
                     drop_l3(Self::get_pte_list(x.paddr()));
-                    T::free_page(x.paddr());
+                    free_page(x.paddr());
                 }
             });
         };
@@ -272,10 +299,12 @@ pub struct TLB;
 ///
 /// TODO: Support More Page Size, 16KB or 32KB
 /// Just support 4KB right now.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum MappingSize {
     /// 4KB per page
     Page4KB,
-    // Page2MB,
-    // Page1GB,
+    /// 2MB per page
+    Page2MB,
+    /// 1GB per page
+    Page1GB,
 }

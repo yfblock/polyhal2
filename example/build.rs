@@ -4,7 +4,8 @@ fn main() {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").expect("Can't find available architecture");
     let base_addr: usize = match target_arch.as_str() {
         "loongarch64" => 0x90000000,
-        "aarch64" => 0x40080000,
+        // "aarch64" => 0x40080000,
+        "aarch64" => 0xffffff8040080000,
         _ => panic!("Unsupported architecture"),
     };
 

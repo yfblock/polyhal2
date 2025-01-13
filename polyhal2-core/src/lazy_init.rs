@@ -16,14 +16,18 @@ unsafe impl<T: Send> Send for LazyInit<T> {}
 
 impl<T> Default for LazyInit<T> {
     fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> LazyInit<T> {
+    /// Create a new lazy init object.
+    pub const fn new() -> Self {
         Self {
             inited: AtomicBool::new(false),
             data: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
-}
-
-impl<T> LazyInit<T> {
     /// Initialize the object by `data`.
     pub fn init_by(&self, data: T) {
         assert!(!self.is_init());

@@ -3,15 +3,6 @@ name = "test-boot"
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name="test_page_boot"
-path = "src/bin/test_page_boot.rs"
-required-features = ["pagetable"]
-
-[[bin]]
-name="test_no_page_boot"
-path = "src/bin/test_no_page_boot.rs"
-
 [features]
 pagetable = ["polyhal2/pagetable"]
 

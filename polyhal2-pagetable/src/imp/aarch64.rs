@@ -1,5 +1,3 @@
-use core::marker::PhantomData;
-
 use aarch64_cpu::registers::{TTBR0_EL1, Writeable};
 use polyhal2_core::{
     addr::{PhysAddr, VirtAddr},
@@ -7,7 +5,7 @@ use polyhal2_core::{
     consts::PAGE_SIZE,
 };
 
-use crate::{MappingFlags, PTE, TLB, VSpace, VSpaceAO};
+use crate::{MappingFlags, MappingSize, PTE, TLB, VSpace};
 
 impl PTE {
     #[inline]
@@ -42,8 +40,16 @@ impl PTE {
     }
 
     /// Create a new PageTableEntry from ppn and flags
-    pub const fn new_page(paddr: PhysAddr, flags: PTEFlags) -> Self {
-        Self(paddr.raw() | flags.bits())
+    pub const fn new_page(paddr: PhysAddr, flags: PTEFlags, size: MappingSize) -> Self {
+        match size {
+            MappingSize::Page4KB => Self(paddr.raw() | flags.bits()),
+            MappingSize::Page1GB => {
+                Self(paddr.raw() | flags.difference(PTEFlags::NON_BLOCK).bits())
+            }
+            MappingSize::Page2MB => {
+                Self(paddr.raw() | flags.difference(PTEFlags::NON_BLOCK).bits())
+            }
+        }
     }
 }
 
@@ -145,19 +151,24 @@ bitflags::bitflags! {
     }
 }
 
-impl<T: VSpaceAO> VSpace<T> {
+impl VSpace {
     /// The size of the page for this platform.
-    pub(crate) const PAGE_SIZE: usize = 0x1000;
-    pub(crate) const PAGE_LEVEL: usize = 3;
+    pub const PAGE_SIZE: usize = 0x1000;
+    /// The stages of the address translation
+    pub const PAGE_LEVEL: usize = 3;
     pub(crate) const PTE_NUM_IN_PAGE: usize = 0x200;
     pub(crate) const GLOBAL_ROOT_PTE_RANGE: usize = 0x200;
-    pub(crate) const VADDR_BITS: usize = 39;
-    pub(crate) const USER_VADDR_END: usize = (1 << Self::VADDR_BITS) - 1;
+
+    /// Create a new VirtualSpace with given physical address.
+    #[inline]
+    pub const fn from_paddr(paddr: PhysAddr) -> VSpace {
+        Self(paddr)
+    }
 
     /// Get the using PageTable currently.
     #[inline]
     pub fn current() -> Self {
-        Self(PhysAddr::new(TTBR0_EL1.get_baddr() as _), PhantomData)
+        Self(PhysAddr::new(TTBR0_EL1.get_baddr() as _))
     }
 
     /// Change the pagetable to Virtual space.

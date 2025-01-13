@@ -48,7 +48,7 @@ pub struct PHInitWrap {
 /// Polyhal Constructor placeholder
 #[used(linker)]
 #[unsafe(link_section = "ph_init")]
-static PH_INIT_ARR: [fn(); 0] = [];
+static PH_INIT_ARR: [PHInitWrap; 0] = [];
 
 /// Get a iterator of the polyhal init section.
 ///

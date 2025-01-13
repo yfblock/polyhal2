@@ -11,7 +11,7 @@ else ifeq ($(ARCH), loongarch64)
 	QEMU_EXEC += -machine virt
 endif
 
-ELF := target/$(TARGET)/$(MODE)/test_no_page_boot
+ELF := target/$(TARGET)/$(MODE)/test-boot
 BIN := $(ELF).bin
 
 ifneq ($(filter $(ARCH), aarch64),)
@@ -28,7 +28,7 @@ endif
 all:
 
 build:
-	cargo build --target $(TARGET) --package test-boot --bin test_no_page_boot
+	cargo build --target $(TARGET) --package test-boot
 	rust-objcopy $(ELF) --strip-all -O binary $(BIN)
 qemu: build
 #	$(QEMU_EXEC) -kernel target/$(TARGET)/$(MODE)/test_no_page_boot

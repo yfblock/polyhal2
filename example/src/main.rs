@@ -2,11 +2,12 @@
 #![no_main]
 #![feature(used_with_arg)]
 
-use log::LevelFilter;
-use polyhal2_debug::println;
-use test_boot::log_impl::LogImpl;
 extern crate polyhal2_debug;
-extern crate test_boot;
+mod log_impl;
+
+use log::LevelFilter;
+use log_impl::LogImpl;
+use polyhal2_debug::println;
 
 polyhal2::boot::ph_ctor!(INIT_LOG, || {
     log::set_logger(&LogImpl).unwrap();

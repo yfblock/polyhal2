@@ -1,12 +1,11 @@
-use core::arch::global_asm;
-
 use aarch64_cpu::asm::barrier;
 use aarch64_cpu::registers::{
     CurrentEL, MAIR_EL1, ReadWriteable, Readable, SCTLR_EL1, TCR_EL1, TTBR0_EL1, TTBR1_EL1,
     Writeable,
 };
-use polyhal2_core::{addr::PhysAddr, consts::KERNEL_OFFSET};
-use polyhal2_pagetable::TLB;
+use polyhal2_core::addr::{PhysAddr, VirtAddr};
+use polyhal2_core::consts::KERNEL_OFFSET;
+use polyhal2_pagetable::{MappingFlags, MappingSize, TLB, VSpace};
 
 use crate::console::{display_basic, display_end};
 use crate::display_info;
@@ -30,16 +29,14 @@ unsafe extern "C" fn _start() -> ! {
             mov     sp, x8
         ",
         // Enable Paging Mode
-        // TODO: Enable if need to enable paging mode
         "
-            b       2f
             adrp    x0, boot_page
             bl      {init_mmu}              // setup MMU
             mov     x8, {KERNEL_OFFSET}     // set SP to the high address
             add     sp, sp, x8
         ",
         // Init boot Stack and call main function
-        "2:
+        "
             mov     x0, x19                 // call rust_entry(cpu_id, dtb)
             mov     x1, x20
             ldr     x8, ={entry}
@@ -58,21 +55,6 @@ pub fn hlt_forever() -> ! {
         aarch64_cpu::asm::wfi();
     }
 }
-
-// Map all memory to the page using 1GB Huge Page.
-global_asm!(
-    "
-    .section .data
-    .p2align 12
-    boot_page:
-    .set    n, 0
-    .rept   512
-        // PTEFlags::VALID | PTEFlags::ATTR_INDX | PTEFlags::AF
-        .quad n | (1 << 0) | (0b111 << 2) | (1 << 10)
-    .set    n, n + 0x40000000
-    .endr
-"
-);
 
 unsafe fn init_mmu(mut root_paddr: u64) {
     MAIR_EL1.set(0x44_ff_04);
@@ -97,6 +79,17 @@ unsafe fn init_mmu(mut root_paddr: u64) {
     if root_paddr > KERNEL_OFFSET as _ {
         root_paddr -= KERNEL_OFFSET as u64;
     }
+    // Mapping all physical addresses.
+    let vspace = VSpace::from_paddr(PhysAddr::new(root_paddr as _));
+    for i in 0..512 {
+        vspace.map_page(
+            VirtAddr::new(0x4000_0000 * i),
+            PhysAddr::new(0x4000_0000 * i),
+            MappingFlags::RWX,
+            MappingSize::Page1GB,
+        );
+    }
+
     TTBR0_EL1.set(root_paddr);
     TTBR1_EL1.set(root_paddr);
     // Flush the entire TLB
