@@ -1,5 +1,4 @@
 use polyhal2_core::consts::KERNEL_OFFSET;
-use polyhal2_device::get_dtb_ptr;
 
 use crate::display_info;
 use core::fmt::{Arguments, Write};
@@ -38,7 +37,12 @@ pub(crate) fn display_basic() {
     );
     display_info!("Platform ABI", "{}", env!("BUILD_ABI"));
     display_info!("Platform Architecture", "{}", env!("BUILD_TARGET"));
-    display_info!("Platform DTB Pointer", "{:#018x}", get_dtb_ptr().raw());
+    #[cfg(not(target_arch = "x86_64"))]
+    display_info!(
+        "Platform DTB Pointer",
+        "{:#018x}",
+        polyhal2_device::get_dtb_ptr().raw()
+    );
 }
 
 /// Display the information before entering kernel

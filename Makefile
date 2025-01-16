@@ -9,6 +9,9 @@ ifeq ($(ARCH), aarch64)
 else ifeq ($(ARCH), loongarch64)
 	TARGET := loongarch64-unknown-none-softfloat
 	QEMU_EXEC += -machine virt
+else ifeq ($(ARCH), x86_64)
+  	TARGET := x86_64-unknown-none
+	QEMU_EXEC += -machine q35 -cpu IvyBridge-v2
 endif
 
 ELF := target/$(TARGET)/$(MODE)/test-boot
@@ -16,7 +19,7 @@ BIN := $(ELF).bin
 
 ifneq ($(filter $(ARCH), aarch64),)
 	QEMU_EXEC += -kernel $(BIN)
-else ifneq ($(filter $(ARCH), loongarch64),)
+else ifneq ($(filter $(ARCH), loongarch64 x86_64),)
 	QEMU_EXEC += -kernel $(ELF)
 endif
 

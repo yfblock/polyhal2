@@ -6,6 +6,7 @@ fn main() {
         "loongarch64" => 0x90000000,
         // "aarch64" => 0x40080000,
         "aarch64" => 0xffffff8040080000,
+        "x86_64" => 0x100000,
         _ => panic!("Unsupported architecture"),
     };
 

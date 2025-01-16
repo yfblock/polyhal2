@@ -12,3 +12,6 @@ aarch64-cpu = { workspace = true }
 
 [target.'cfg(target_arch = "loongarch64")'.dependencies]
 loongArch64 = { workspace = true }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+x86_64 = { workspace = true }

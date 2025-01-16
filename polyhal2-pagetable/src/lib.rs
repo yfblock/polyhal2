@@ -7,6 +7,7 @@
 /// PageTable for aarch64
 #[cfg_attr(target_arch = "aarch64", path = "imp/aarch64.rs")]
 #[cfg_attr(target_arch = "loongarch64", path = "imp/loongarch64.rs")]
+#[cfg_attr(target_arch = "x86_64", path = "imp/x86_64.rs")]
 mod imp;
 
 use imp::{pg_index, pg_offest};

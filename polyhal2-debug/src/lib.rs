@@ -8,6 +8,7 @@ use polyhal2_boot::uart_interface;
 
 #[cfg_attr(target_arch = "aarch64", path = "arch/aarch64.rs")]
 #[cfg_attr(target_arch = "loongarch64", path = "arch/loongarch64.rs")]
+#[cfg_attr(target_arch = "x86_64", path = "arch/x86_64.rs")]
 pub mod arch;
 
 pub struct DebugConsole;

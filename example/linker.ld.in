@@ -8,10 +8,9 @@ SECTIONS
     _skernel = .;
 
     .text ALIGN(4K): {
-        stext = .;
-        *(.text._start );
+        *(.multiboot)
+        *(.text._start*)
         *(.text .text.*)
-        etext = .;
     }
 
     .rodata ALIGN(4K): {
@@ -26,12 +25,10 @@ SECTIONS
         *(.sdata .sdata.*)
         _edata = .;
     }
-    
-    _load_end = .;
 
     .bss ALIGN(4K): {
-        *(.bss.bstack*)
         _sbss = .;
+        *(.bss.bstack*)
         *(.bss .bss.*)
         *(.sbss .sbss.*)
         _ebss = .;
