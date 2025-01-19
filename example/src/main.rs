@@ -24,6 +24,10 @@ polyhal2::boot::ph_ctor!(INIT_LOG, || {
 fn main(_hart_id: usize) {
     println!("Entering kernel ...");
     println!("Hello World!");
+    unsafe {
+        let test_ptr = 0x1_0000_0000_0000 as *mut u64;
+        test_ptr.write_volatile(0x12345678);
+    }
     log::debug!("Test kernel Logging");
 }
 

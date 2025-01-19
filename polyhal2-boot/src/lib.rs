@@ -14,6 +14,9 @@ use core::slice::Iter;
 /// EntryPoint per architecture
 mod entry;
 
+/// Default Trap Handler
+mod trap;
+
 /// Input and output function
 pub mod console;
 /// The helpful macros.

@@ -1,6 +1,6 @@
 //! polyhal debug crate
-//! 
-//! 
+//!
+//!
 #![no_std]
 // #![deny(missing_docs)]
 #![feature(linkage)]

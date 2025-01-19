@@ -1,5 +1,3 @@
 /// Wait For Interrupt
 #[inline]
-pub fn wfi() {
-
-}
+pub fn wfi() {}

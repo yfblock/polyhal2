@@ -100,6 +100,7 @@ pub(crate) unsafe extern "C" fn secondary_start() -> ! {
 pub(crate) fn rust_main(hartid: usize, dtb: usize) {
     // Initialize CPU Configuration.
     init_cpu();
+    crate::trap::riscv64::init();
 
     crate::ph_init_iter().for_each(|phw| (phw.func)());
     display_info!("DTB PTR", "{:#X}", dtb);

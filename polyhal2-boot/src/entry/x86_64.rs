@@ -58,6 +58,7 @@ global_asm!(
 fn rust_tmp_main(magic: usize, mboot_ptr: u64) {
     // Initialize CPU Configuration.
     init_page_table();
+    crate::trap::x86_64::init();
 
     crate::ph_init_iter().for_each(|phw| (phw.func)());
     let hart_id = match raw_cpuid::CpuId::new().get_feature_info() {

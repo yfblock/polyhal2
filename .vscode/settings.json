@@ -1,9 +1,13 @@
 {
     "rust-analyzer.check.allTargets": false,
+    // "rust-analyzer.cargo.target": "riscv64imac-unknown-none-elf",
+    // "rust-analyzer.cargo.target": "loongarch64-unknown-none-softfloat",
+    // "rust-analyzer.cargo.target": "aarch64-unknown-none-softfloat",
+    "rust-analyzer.cargo.target": "x86_64-unknown-none",
     "rust-analyzer.check.targets": [
         "loongarch64-unknown-none-softfloat",
         "aarch64-unknown-none-softfloat",
-        "riscv64gc-unknown-none-elf",
+        "riscv64imac-unknown-none-elf",
         "x86_64-unknown-none",
-    ]
+    ],
 }

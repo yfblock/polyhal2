@@ -13,7 +13,7 @@ else ifeq ($(ARCH), x86_64)
   	TARGET := x86_64-unknown-none
 	QEMU_EXEC += -machine q35 -cpu IvyBridge-v2
 else ifeq ($(ARCH), riscv64)
-	TARGET := riscv64gc-unknown-none-elf
+	TARGET := riscv64imac-unknown-none-elf
 	QEMU_EXEC += -machine virt
 endif
 

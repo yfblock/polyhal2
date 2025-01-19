@@ -59,6 +59,8 @@ pub fn hlt_forever() -> ! {
 pub fn rust_tmp_main(hart_id: usize) {
     // Initialize CPU Configuration.
     init_cpu();
+    crate::trap::loongarch64::init();
+
     crate::ph_init_iter().for_each(|phw| (phw.func)());
     // FIXME: Make this statement more efficient
     polyhal2_device::init_dtb(PhysAddr::new(0x100000));

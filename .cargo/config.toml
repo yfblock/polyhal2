@@ -1,9 +1,3 @@
-[build]
-# target = "aarch64-unknown-none-softfloat"
-# target = "x86_64-unknown-none"
-# target = "riscv64imac-unknown-none-elf"
-target = "loongarch64-unknown-none"
-
 [target.x86_64-unknown-none]
 rustflags = [
     '-Clink-arg=-no-pie',

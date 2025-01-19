@@ -102,6 +102,7 @@ unsafe fn init_mmu(mut root_paddr: u64) {
 
 /// Rust Temporary Entry
 unsafe fn rust_tmp_main(hart_id: usize, dtb: usize) {
+    crate::trap::aarch64::init();
     // Initialize all constructor functions.
     crate::ph_init_iter().for_each(|phw| (phw.func)());
     polyhal2_device::init_dtb(PhysAddr::new(dtb));
