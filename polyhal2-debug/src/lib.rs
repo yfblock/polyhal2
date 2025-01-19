@@ -1,4 +1,8 @@
+//! polyhal debug crate
+//! 
+//! 
 #![no_std]
+// #![deny(missing_docs)]
 #![feature(linkage)]
 #![feature(used_with_arg)]
 
@@ -9,8 +13,10 @@ use polyhal2_boot::uart_interface;
 #[cfg_attr(target_arch = "aarch64", path = "arch/aarch64.rs")]
 #[cfg_attr(target_arch = "loongarch64", path = "arch/loongarch64.rs")]
 #[cfg_attr(target_arch = "x86_64", path = "arch/x86_64.rs")]
+#[cfg_attr(target_arch = "riscv64", path = "arch/riscv64.rs")]
 pub mod arch;
 
+/// Debug Console
 pub struct DebugConsole;
 
 uart_interface!(DebugConsole::putchar, DebugConsole::getchar);

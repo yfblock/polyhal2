@@ -101,22 +101,22 @@ fn init_page_table() {
     unsafe extern "C" {
         fn boot_page();
     }
-    const PDPT_FLAGS: u64 = 0x3;        // P | W
-    const PD_FLAGS: u64 = 0x83;         // P | W | HUGE
+    const PDPT_FLAGS: u64 = 0x3; // P | W
+    const PD_FLAGS: u64 = 0x83; // P | W | HUGE
     unsafe {
         let pdpt_ptr = boot_page as usize + 0x1000;
         let pd_ptr = pdpt_ptr + 0x1000;
 
         // Initialize PDPT range 0x0000_0000_4000_0000 - 0x0000_007f_ffff_ffff
         let pdpt = slice::from_raw_parts_mut(pdpt_ptr as *mut u64, 512);
-        for i in 1..512 {
-            pdpt[i] = (pd_ptr - KERNEL_OFFSET + i * 0x1000) as u64 + PDPT_FLAGS;
+        for (i, pdpt_item) in pdpt.iter_mut().enumerate().take(512).skip(1) {
+            *pdpt_item = (pd_ptr - KERNEL_OFFSET + i * 0x1000) as u64 + PDPT_FLAGS;
         }
 
         // Initalize PDPT range 0x0000_0000_4000_0000 - 0x0000_007f_ffff_ffff
         let pd = slice::from_raw_parts_mut(pd_ptr as *mut u64, 512 * 512);
-        for i in 512..pd.len() {
-            pd[i] = i as u64 * 0x200000 + PD_FLAGS;
+        for (i, pd_item) in pd.iter_mut().enumerate().skip(512) {
+            *pd_item = i as u64 * 0x200000 + PD_FLAGS;
         }
     }
 }

@@ -9,38 +9,38 @@ use crate::{MappingFlags, MappingSize, PTE, TLB, VSpace};
 
 impl PTE {
     #[inline]
-    pub const fn paddr(&self) -> PhysAddr {
+    pub(crate) const fn paddr(&self) -> PhysAddr {
         PhysAddr::new(self.0).floor(PAGE_SIZE)
     }
 
     #[inline]
     #[allow(dead_code)]
-    pub const fn set(&mut self, ppn: usize, flags: PTEFlags) {
+    pub(crate) const fn set(&mut self, ppn: usize, flags: PTEFlags) {
         self.0 = (ppn << 10) | flags.bits();
     }
 
     #[inline]
-    pub const fn flags(&self) -> PTEFlags {
+    pub(crate) const fn flags(&self) -> PTEFlags {
         PTEFlags::from_bits_truncate(self.0)
     }
 
     #[inline]
-    pub const fn is_valid(&self) -> bool {
+    pub(crate) const fn is_valid(&self) -> bool {
         self.flags().contains(PTEFlags::VALID)
     }
 
     #[inline]
-    pub fn is_table(&self) -> bool {
-        self.flags().contains(PTEFlags::NON_BLOCK | PTEFlags::VALID)
+    pub(crate) const fn is_table(&self) -> bool {
+        self.flags().contains(PTEFlags::NON_BLOCK) & self.flags().contains(PTEFlags::VALID)
     }
 
     #[inline]
-    pub(crate) fn new_table(paddr: PhysAddr) -> Self {
+    pub(crate) const fn new_table(paddr: PhysAddr) -> Self {
         Self(paddr.raw() | 0b11)
     }
 
     /// Create a new PageTableEntry from ppn and flags
-    pub const fn new_page(paddr: PhysAddr, flags: PTEFlags, size: MappingSize) -> Self {
+    pub(crate) const fn new_page(paddr: PhysAddr, flags: PTEFlags, size: MappingSize) -> Self {
         match size {
             MappingSize::Page4KB => Self(paddr.raw() | flags.bits()),
             MappingSize::Page1GB => {

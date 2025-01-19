@@ -85,17 +85,17 @@ impl From<PTEFlags> for MappingFlags {
 
 impl PTE {
     #[inline]
-    pub(crate) fn is_valid(&self) -> bool {
+    pub(crate) const fn is_valid(&self) -> bool {
         self.flags().contains(PTEFlags::P)
     }
 
     #[inline]
-    pub(crate) fn is_table(&self) -> bool {
+    pub(crate) const fn is_table(&self) -> bool {
         self.flags().contains(PTEFlags::P) & !self.flags().contains(PTEFlags::PS)
     }
 
     #[inline]
-    pub(crate) fn flags(&self) -> PTEFlags {
+    pub(crate) const fn flags(&self) -> PTEFlags {
         PTEFlags::from_bits_truncate(self.0 as _)
     }
 
@@ -105,7 +105,7 @@ impl PTE {
     }
 
     #[inline]
-    pub(crate) fn new_page(paddr: PhysAddr, flags: PTEFlags, size: MappingSize) -> Self {
+    pub(crate) const fn new_page(paddr: PhysAddr, flags: PTEFlags, size: MappingSize) -> Self {
         match size {
             MappingSize::Page4KB => Self(paddr.raw() | flags.bits() as usize),
             MappingSize::Page2MB => todo!(),
@@ -114,7 +114,7 @@ impl PTE {
     }
 
     #[inline]
-    pub(crate) fn paddr(&self) -> PhysAddr {
+    pub(crate) const fn paddr(&self) -> PhysAddr {
         PhysAddr::new(self.0 & 0xFFFF_FFFF_F000)
     }
 }
@@ -137,7 +137,7 @@ impl VSpace {
 
     /// Change the pagetable to Virtual space.
     #[inline]
-    pub fn change(&self) {
+    pub fn switch(&self) {
         unsafe {
             core::arch::asm!("mov cr3, {}", in(reg) self.0.raw());
         }

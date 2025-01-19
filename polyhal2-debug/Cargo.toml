@@ -15,4 +15,9 @@ spin = { workspace = true }
 arm_pl011 = { workspace = true }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-uart_16550 = "0.3.2"
+uart_16550 = { workspace = true }
+
+[target.'cfg(target_arch = "riscv64")'.dependencies]
+sbi-rt = { workspace = true, features = ["legacy"] }
+
+[target.'cfg(target_arch = "loongarch64")'.dependencies]

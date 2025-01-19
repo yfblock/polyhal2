@@ -12,6 +12,8 @@
 /// addr Module, contains address and page type
 /// physical and virtual version exists
 pub mod addr;
+/// Architecture implementation.
+pub mod arch;
 /// It contains the constant value
 /// Some consts will be initialized when compiling
 /// using (const fn) from_str_radix by passing env.

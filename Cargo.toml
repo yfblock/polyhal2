@@ -39,3 +39,8 @@ arm_pl011 = "0.1.0"
 x86_64 = "0.14"
 multiboot = "0.8.0"
 raw-cpuid = "11.0"
+uart_16550 = "0.3.2"
+
+# riscv64 dependencies
+riscv = "0.12.1"
+sbi-rt = "0.0.2"

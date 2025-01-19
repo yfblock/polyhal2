@@ -2,11 +2,13 @@
 ///
 /// ## Demo
 ///
+/// ```rust
 /// fn main(hart) {
 ///     println!("This is main function");
 /// }
 ///
 /// entry_point!(main, 0x1000)
+/// ```
 #[macro_export]
 macro_rules! entry_point {
     ($entry:ident, $boot_stack:literal) => {
@@ -34,6 +36,7 @@ macro_rules! entry_point {
 ///
 /// ## Demo
 ///
+/// ```rust
 /// fn put_char(c: u8) {
 ///     todo!("putchar")
 /// }
@@ -41,6 +44,7 @@ macro_rules! entry_point {
 /// fn get_char() -> u8 {
 ///     todo!("getchar")
 /// }
+/// ```
 ///
 /// uart_interface!(put_char, get_char);
 ///
