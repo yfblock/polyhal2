@@ -4,8 +4,8 @@ use aarch64_cpu::registers::{
     Writeable,
 };
 use polyhal2_core::addr::{PhysAddr, VirtAddr};
+use polyhal2_core::bit;
 use polyhal2_core::consts::KERNEL_OFFSET;
-use polyhal2_pagetable::{MappingFlags, MappingSize, TLB, VSpace};
 
 use crate::console::{display_basic, display_end};
 use crate::display_info;
@@ -56,7 +56,8 @@ pub fn hlt_forever() -> ! {
     }
 }
 
-unsafe fn init_mmu(mut root_paddr: u64) {
+#[allow(unsafe_op_in_unsafe_fn)]
+unsafe fn init_mmu(mut root_paddr: usize) {
     MAIR_EL1.set(0x44_ff_04);
 
     // Enable TTBR0 and TTBR1 walks, page size = 4K, vaddr size = 39 bits, paddr size = 40 bits.
@@ -76,24 +77,21 @@ unsafe fn init_mmu(mut root_paddr: u64) {
     barrier::isb(barrier::SY);
 
     // Set both TTBR0 and TTBR1
-    if root_paddr > KERNEL_OFFSET as _ {
-        root_paddr -= KERNEL_OFFSET as u64;
+    if root_paddr > KERNEL_OFFSET {
+        root_paddr -= KERNEL_OFFSET;
     }
     // Mapping all physical addresses.
-    let vspace = VSpace::from_paddr(PhysAddr::new(root_paddr as _));
-    for i in 0..512 {
-        vspace.map_page(
-            VirtAddr::new(0x4000_0000 * i),
-            PhysAddr::new(0x4000_0000 * i),
-            MappingFlags::RWX,
-            MappingSize::Page1GB,
-        );
+    let ptr = VirtAddr::new(root_paddr).get_mut_ptr::<usize>();
+    for idx in 0..512 {
+        // FLAGS: VALID | AF(AccessFlag)
+        const FLAGS: usize = bit!(0) | bit!(10);
+        ptr.add(idx).write_volatile((idx * 0x4000_0000) | FLAGS);
     }
 
-    TTBR0_EL1.set(root_paddr);
-    TTBR1_EL1.set(root_paddr);
+    TTBR0_EL1.set(root_paddr as _);
+    TTBR1_EL1.set(root_paddr as _);
     // Flush the entire TLB
-    TLB::flush_all();
+    core::arch::asm!("tlbi vmalle1; dsb sy; isb");
 
     // Enable the MMU and turn on I-cache and D-cache
     SCTLR_EL1.modify(SCTLR_EL1::M::Enable + SCTLR_EL1::C::Cacheable + SCTLR_EL1::I::Cacheable);

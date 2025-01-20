@@ -26,9 +26,9 @@ fn main(_hart_id: usize) {
     println!("Hello World!");
     unsafe {
         let test_ptr = 0x1_0000_0000_0000 as *mut u64;
-        test_ptr.write_volatile(0x12345678);
+        *test_ptr = 0x12345678;
     }
-    log::debug!("Test kernel Logging");
+    unreachable!("Should Panic Before");
 }
 
 // Specific a boot function and the size of the boot_stack

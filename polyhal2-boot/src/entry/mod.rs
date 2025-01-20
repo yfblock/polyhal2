@@ -37,14 +37,7 @@ global_asm!(
 /// Get the boot pages number
 const fn get_boot_pages() -> usize {
     #[cfg(not(target_arch = "x86_64"))]
-    match polyhal2_pagetable::VSpace::PAGE_LEVEL {
-        // use 2 physical pages.
-        4 => 2,
-        // riscv64 and aarch64 will use 1 boot pages
-        3 => 1,
-        _ => panic!("Unsupported page level"),
-    }
-    // x86_64 use 514 physical pages (for not 1G huge page compatiable)
+    return 1;
     #[cfg(target_arch = "x86_64")]
-    514
+    return 514;
 }

@@ -43,10 +43,7 @@ impl PTE {
     pub(crate) const fn new_page(paddr: PhysAddr, flags: PTEFlags, size: MappingSize) -> Self {
         match size {
             MappingSize::Page4KB => Self(paddr.raw() | flags.bits()),
-            MappingSize::Page1GB => {
-                Self(paddr.raw() | flags.difference(PTEFlags::NON_BLOCK).bits())
-            }
-            MappingSize::Page2MB => {
+            MappingSize::Page1GB | MappingSize::Page2MB => {
                 Self(paddr.raw() | flags.difference(PTEFlags::NON_BLOCK).bits())
             }
         }

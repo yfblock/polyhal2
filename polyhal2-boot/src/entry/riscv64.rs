@@ -1,8 +1,4 @@
-use polyhal2_core::{
-    addr::{PhysAddr, VirtAddr},
-    consts::KERNEL_OFFSET,
-};
-use polyhal2_pagetable::{MappingFlags, MappingSize, VSpace};
+use polyhal2_core::{addr::PhysAddr, bit, consts::KERNEL_OFFSET};
 use riscv::{
     asm::wfi,
     register::{sie, sstatus},
@@ -127,14 +123,12 @@ pub(crate) extern "C" fn rust_secondary_main(hartid: usize) {
     super::call_rust_main(hartid);
 }
 
-fn init_vspace(vspace: VSpace) {
+#[allow(unsafe_op_in_unsafe_fn)]
+unsafe fn init_vspace(vspace: *mut usize) {
     for i in 0..0x100 {
-        vspace.map_page(
-            VirtAddr::new(i * 0x4000_0000),
-            PhysAddr::new(i * 0x4000_0000),
-            MappingFlags::RWX,
-            MappingSize::Page1GB,
-        );
+        // FLAGS: Valid | Read | Write | eXecute | Access | Dirty
+        const FLAGS: usize = bit!(0) | bit!(1) | bit!(2) | bit!(3) | bit!(6) | bit!(7);
+        *vspace.add(i) = ((i * 0x4000_0000) >> 2) | FLAGS;
     }
 }
 

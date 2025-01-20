@@ -1,6 +1,6 @@
 use core::arch::global_asm;
 
-use aarch64_cpu::registers::{VBAR_EL1, Writeable};
+use aarch64_cpu::registers::{ELR_EL1, ESR_EL1, Readable, VBAR_EL1, Writeable};
 
 global_asm!("
 .macro INVALID_EXCP, kind, source
@@ -29,7 +29,15 @@ exception_vector_base:
 );
 
 unsafe extern "C" fn trap_handler(kind: usize, source: usize) -> ! {
-    panic!("Unhandled Trap @ SP_EL{source}, kind: {:#x} ", kind)
+    let esr = ESR_EL1.extract();
+    let elr = ELR_EL1.extract();
+    panic!(
+        "Unhandled Trap @ SP_EL{source}, kind: {:#x}, esr: {:?} {{{:#x}}}, elr: {:#x}",
+        kind,
+        esr.read_as_enum::<ESR_EL1::EC::Value>(ESR_EL1::EC),
+        esr.get(),
+        elr.get()
+    )
 }
 
 pub(crate) fn init() {
